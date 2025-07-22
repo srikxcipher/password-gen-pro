@@ -1,0 +1,21 @@
+password-generator/
+├── app.py                          # Flask application (main backend)
+├── requirements.txt                # Python dependencies
+├── Dockerfile                      # Container configuration
+├── README.md                       # This file
+├── templates/
+│   └── index.html                 # Frontend template
+├── .github/
+│   └── workflows/
+│       └── ci-cd.yml              # GitHub Actions pipeline
+├── terraform/
+│   ├── main.tf                    # Main Terraform configuration
+│   ├── variables.tf               # Terraform variables
+│   ├── outputs.tf                 # Terraform outputs
+│   └── terraform.tfvars           # Variable values (create this)
+├── k8s/
+│   ├── deployment.yaml            # Kubernetes deployment
+│   └── service.yaml               # Kubernetes service & HPA
+└── scripts/
+    ├── setup.sh                   # Environment setup script
+    └── deploy.sh                  # Local deployment script

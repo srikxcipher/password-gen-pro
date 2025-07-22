@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .title {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .checkbox-item label {
+            margin-bottom: 0;
+            cursor: pointer;
+        }
+
+        .generate-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+        }
+
+        .password-display {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .copy-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background: #218838;
+        }
+
+        .error-message {
+            color: #dc3545;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        /* Responsive design */
+        @media (max-width: 600px) {
+            .container {
+                padding: 25px;
+                margin: 10px;
+            }
+            
+            .title {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">Password Generator</h1>
+        
+        <form id="passwordForm">
+            <!-- Password Length Input -->
+            <div class="form-group">
+                <label for="length">Password Length:</label>
+                <input type="number" id="length" name="length" min="4" max="128" value="12" required>
+            </div>
+
+            <!-- Character Type Selection -->
+            <div class="form-group">
+                <label>Include Characters:</label>
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="alphabets" name="alphabets" checked>
+                        <label for="alphabets">Alphabets (a-z, A-Z)</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="numbers" name="numbers">
+                        <label for="numbers">Numbers (0-9)</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="symbols" name="symbols">
+                        <label for="symbols">Symbols (!@#$%^&*)</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Generate Button -->
+            <button type="submit" class="generate-btn" id="generateBtn">
+                Generate Password
+            </button>
+        </form>
+
+        <!-- Loading Indicator -->
+        <div class="loading" id="loading">
+            Generating secure password...
+        </div>
+
+        <!-- Results Section -->
+        <div class="result-section" id="resultSection" style="display: none;">
+            <label>Generated Password:</label>
+            <div class="password-display" id="passwordDisplay"></div>
+            <button type="button" class="copy-btn" id="copyBtn">
+                Copy to Clipboard
+            </button>
+        </div>
+
+        <!-- Error Display -->
+        <div class="error-message" id="errorMessage" style="display: none;"></div>
+    </div>
+
+    <script>
+        // Password generator application logic
+        class PasswordGeneratorApp {
+            constructor() {
+                this.form = document.getElementById('passwordForm');
+                this.generateBtn = document.getElementById('generateBtn');
+                this.copyBtn = document.getElementById('copyBtn');
+                this.passwordDisplay = document.getElementById('passwordDisplay');
+                this.resultSection = document.getElementById('resultSection');
+                this.errorMessage = document.getElementById('errorMessage');
+                this.loading = document.getElementById('loading');
+                
+                this.initializeEventListeners();
+            }
+
+            /**
+             * Set up event listeners for form interactions
+             */
+            initializeEventListeners() {
+                // Form submission handler
+                this.form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.generatePassword();
+                });
+
+                // Copy to clipboard handler
+                this.copyBtn.addEventListener('click', () => {
+                    this.copyToClipboard();
+                });
+
+                // Real-time validation for checkboxes
+                const checkboxes = this.form.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', () => {
+                        this.validateForm();
+                    });
+                });
+            }
+
+            /**
+             * Validate that at least one character type is selected
+             */
+            validateForm() {
+                const checkboxes = this.form.querySelectorAll('input[type="checkbox"]');
+                const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+                
+                if (!anyChecked) {
+                    this.showError('Please select at least one character type');
+                    this.generateBtn.disabled = true;
+                } else {
+                    this.hideError();
+                    this.generateBtn.disabled = false;
+                }
+            }
+
+            /**
+             * Generate password by calling the backend API
+             */
+            async generatePassword() {
+                try {
+                    // Show loading state
+                    this.showLoading();
+                    this.hideError();
+                    this.hideResult();
+
+                    // Collect form data
+                    const formData = new FormData(this.form);
+                    const requestData = {
+                        length: parseInt(formData.get('length')),
+                        alphabets: formData.get('alphabets') === 'on',
+                        numbers: formData.get('numbers') === 'on',
+                        symbols: formData.get('symbols') === 'on'
+                    };
+
+                    // Make API request
+                    const response = await fetch('/generate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestData)
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        this.displayPassword(data.password);
+                    } else {
+                        throw new Error(data.error || 'Failed to generate password');
+                    }
+
+                } catch (error) {
+                    console.error('Password generation error:', error);
+                    this.showError(error.message || 'Failed to generate password. Please try again.');
+                } finally {
+                    this.hideLoading();
+                }
+            }
+
+            /**
+             * Display the generated password
+             */
+            displayPassword(password) {
+                this.passwordDisplay.textContent = password;
+                this.resultSection.style.display = 'block';
+            }
+
+            /**
+             * Copy password to clipboard
+             */
+            async copyToClipboard() {
+                try {
+                    const password = this.passwordDisplay.textContent;
+                    
+                    // Check if password exists
+                    if (!password || password.trim() === '') {
+                        throw new Error('No password to copy');
+                    }
+                    
+                    // Try modern clipboard API first
+                    if (navigator.clipboard && window.isSecureContext) {
+                        await navigator.clipboard.writeText(password);
+                    } else {
+                        // Fallback for older browsers or non-secure contexts
+                        await this.fallbackCopyToClipboard(password);
+                    }
+                    
+                    // Visual feedback for successful copy
+                    const originalText = this.copyBtn.textContent;
+                    this.copyBtn.textContent = 'Copied!';
+                    this.copyBtn.style.background = '#28a745';
+                    
+                    setTimeout(() => {
+                        this.copyBtn.textContent = originalText;
+                        this.copyBtn.style.background = '';
+                    }, 2000);
+
+                } catch (error) {
+                    console.error('Failed to copy password:', error);
+                    this.showError('Failed to copy password to clipboard. You can manually select and copy the password.');
+                }
+            }
+
+            /**
+             * Fallback method for copying to clipboard in older browsers
+             */
+            fallbackCopyToClipboard(text) {
+                return new Promise((resolve, reject) => {
+                    // Create a temporary textarea element
+                    const textArea = document.createElement('textarea');
+                    textArea.value = text;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-999999px';
+                    textArea.style.top = '-999999px';
+                    document.body.appendChild(textArea);
+                    
+                    try {
+                        textArea.focus();
+                        textArea.select();
+                        
+                        // Use execCommand as fallback
+                        const successful = document.execCommand('copy');
+                        if (successful) {
+                            resolve();
+                        } else {
+                            reject(new Error('execCommand failed'));
+                        }
+                    } catch (error) {
+                        reject(error);
+                    } finally {
+                        document.body.removeChild(textArea);
+                    }
+                });
+            }
+
+            /**
+             * Show error message to user
+             */
+            showError(message) {
+                this.errorMessage.textContent = message;
+                this.errorMessage.style.display = 'block';
+            }
+
+            /**
+             * Hide error message
+             */
+            hideError() {
+                this.errorMessage.style.display = 'none';
+            }
+
+            /**
+             * Show loading indicator
+             */
+            showLoading() {
+                this.loading.style.display = 'block';
+                this.generateBtn.disabled = true;
+            }
+
+            /**
+             * Hide loading indicator
+             */
+            hideLoading() {
+                this.loading.style.display = 'none';
+                this.generateBtn.disabled = false;
+            }
+
+            /**
+             * Hide result section
+             */
+            hideResult() {
+                this.resultSection.style.display = 'none';
+            }
+        }
+
+        // Initialize the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new PasswordGeneratorApp();
+        });
+    </script>
+</body>
+</html>

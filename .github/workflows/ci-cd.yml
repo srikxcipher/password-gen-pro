@@ -1,0 +1,61 @@
+# Simple CI/CD for Password Generator
+
+name: Deploy Password Generator
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  PROJECT_NAME: password-generator
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_wrapper: false
+
+    - name: Deploy Infrastructure
+      working-directory: ./terraform
+      run: |
+        terraform init
+        terraform apply -auto-approve
+        echo "ECR_URL=$(terraform output -raw ecr_repository_url)" >> $GITHUB_ENV
+        echo "SERVICE_ARN=$(terraform output -raw app_runner_service_arn)" >> $GITHUB_ENV
+
+    - name: Build and Push Docker Image
+      run: |
+        # Login to ECR
+        aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.ECR_URL }}
+        
+        # Build and push
+        docker build -t ${{ env.PROJECT_NAME }} .
+        docker tag ${{ env.PROJECT_NAME }}:latest ${{ env.ECR_URL }}:latest
+        docker push ${{ env.ECR_URL }}:latest
+
+    - name: Deploy to App Runner
+      run: |
+        aws apprunner start-deployment --service-arn ${{ env.SERVICE_ARN }} --region ${{ env.AWS_REGION }}
+        echo "Deployment started!"
+
+    - name: Get Application URL
+      run: |
+        sleep 30  # Wait for deployment to start
+        SERVICE_URL=$(aws apprunner describe-service --service-arn ${{ env.SERVICE_ARN }} --region ${{ env.AWS_REGION }} --query 'Service.ServiceUrl' --output text)
+        echo "Deployment complete! ✔️"
+        echo "Your app: https://$SERVICE_URL"
