@@ -1,46 +1,48 @@
 #!/bin/bash
-# Deployment script for Password Generator
-
 set -e
 
-echo "Deploying Password Generator..."
+# Path where your Terraform configuration files are located
+TF_DIR="$(dirname "$0")/terraform"
 
-# Check prerequisites
-command -v aws >/dev/null 2>&1 || { echo "AWS CLI required"; exit 1; }
-command -v docker >/dev/null 2>&1 || { echo "Docker required"; exit 1; }
-command -v terraform >/dev/null 2>&1 || { echo "Terraform required"; exit 1; }
+cd "$TF_DIR"
 
-# Check AWS credentials
-aws sts get-caller-identity >/dev/null 2>&1 || { echo "AWS credentials not configured"; exit 1; }
+PROJECT_NAME="password-generator"
+AWS_REGION="us-east-1"
 
-# Deploy infrastructure
-cd terraform
-terraform init
-terraform apply -auto-approve
+echo "=========================================="
+echo "Deploying $PROJECT_NAME ..."
+echo "=========================================="
 
-# Get outputs
+# Step 1: Terraform init
+echo "[Step 1] Initializing Terraform..."
+terraform init -input=false
+
+# Step 2: Create ECR + IAM roles
+echo "[Step 2] Creating ECR repository and IAM role..."
+terraform apply -auto-approve -var="create_service=false"
+
+# Get ECR Repository URL
 ECR_URL=$(terraform output -raw ecr_repository_url)
-SERVICE_ARN=$(terraform output -raw app_runner_service_arn)
-APP_URL=$(terraform output -raw application_url)
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
-cd ..
+echo "ECR Repository URL: $ECR_URL"
 
-# Build and push Docker image
-echo "Building Docker image..."
-docker build -t password-generator .
+echo "[Step 3] Building and pushing Docker image..."
+aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
-echo "Logging into ECR..."
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_URL
-
-echo "Pushing to ECR..."
-docker tag password-generator:latest $ECR_URL:latest
+pushd ..
+docker build -t $PROJECT_NAME .
+docker tag $PROJECT_NAME:latest $ECR_URL:latest
 docker push $ECR_URL:latest
+popd
 
-# Deploy to App Runner
-echo "Deploying to App Runner..."
-aws apprunner start-deployment --service-arn $SERVICE_ARN --region us-east-1
+# Step 4: Deploy App Runner service
+echo "[Step 4] Deploying App Runner service..."
+terraform apply -auto-approve -var="create_service=true"
 
-echo ""
-echo "Deployment complete! ✔️"
-echo "Your app: $APP_URL"
-echo ""
+# Fetch Application URL
+APP_URL=$(terraform output -raw application_url)
+echo "=========================================="
+echo "Deployment complete! Your app is live at:"
+echo "$APP_URL"
+echo "=========================================="

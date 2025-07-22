@@ -1,21 +1,22 @@
-password-generator/
+password-gen-pro/
 ├── app.py                          # Flask application (main backend)
-├── requirements.txt                # Python dependencies
+├── cleanup.sh                      # Cleanup script for AWS resources
+├── deploy-simple.sh                # Deployment script
 ├── Dockerfile                      # Container configuration
-├── README.md                       # This file
-├── templates/
-│   └── index.html                 # Frontend template
+├── doc.txt                         # Project structure documentation
 ├── .github/
 │   └── workflows/
-│       └── ci-cd.yml              # GitHub Actions pipeline
+│       └── ci-cd.yml              # GitHub Actions CI/CD pipeline
+├── .gitignore                      # Git ignore file
+├── README.md                       # Main project documentation
+├── README-simple.md                # Simplified documentation
+├── requirements.txt                # Python dependencies
+├── templates/
+│   └── index.html                 # Frontend HTML template
 ├── terraform/
-│   ├── main.tf                    # Main Terraform configuration
-│   ├── variables.tf               # Terraform variables
+│   ├── main.tf                    # Terraform infrastructure configuration
 │   ├── outputs.tf                 # Terraform outputs
-│   └── terraform.tfvars           # Variable values (create this)
-├── k8s/
-│   ├── deployment.yaml            # Kubernetes deployment
-│   └── service.yaml               # Kubernetes service & HPA
-└── scripts/
-    ├── setup.sh                   # Environment setup script
-    └── deploy.sh                  # Local deployment script
+│   └── variables.tf               # Terraform variables
+│                     
+└── USAGE.md  # Usage documentation
+   

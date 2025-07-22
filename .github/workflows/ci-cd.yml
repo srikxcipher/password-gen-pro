@@ -1,5 +1,3 @@
-# Simple CI/CD for Password Generator
-
 name: Deploy Password Generator
 
 on:
@@ -30,23 +28,29 @@ jobs:
       with:
         terraform_wrapper: false
 
-    - name: Deploy Infrastructure
+    # Phase 1: ECR & IAM setup
+    - name: Deploy Infrastructure (ECR Only)
       working-directory: ./terraform
       run: |
         terraform init
-        terraform apply -auto-approve
+        terraform apply -auto-approve -var create_service=false
         echo "ECR_URL=$(terraform output -raw ecr_repository_url)" >> $GITHUB_ENV
-        echo "SERVICE_ARN=$(terraform output -raw app_runner_service_arn)" >> $GITHUB_ENV
 
+    # Build & Push Docker Image
     - name: Build and Push Docker Image
       run: |
-        # Login to ECR
-        aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.ECR_URL }}
-        
-        # Build and push
-        docker build -t ${{ env.PROJECT_NAME }} .
+        aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
+        docker login --username AWS --password-stdin $(echo ${{ env.ECR_URL }} | cut -d'/' -f1)
+        docker build -t ${{ env.PROJECT_NAME }} -f ./Dockerfile .
         docker tag ${{ env.PROJECT_NAME }}:latest ${{ env.ECR_URL }}:latest
         docker push ${{ env.ECR_URL }}:latest
+
+    # Phase 2: Create App Runner
+    - name: Deploy App Runner
+      working-directory: ./terraform
+      run: |
+        terraform apply -auto-approve -var create_service=true
+        echo "SERVICE_ARN=$(terraform output -raw app_runner_service_arn)" >> $GITHUB_ENV
 
     - name: Deploy to App Runner
       run: |
@@ -55,7 +59,7 @@ jobs:
 
     - name: Get Application URL
       run: |
-        sleep 30  # Wait for deployment to start
+        sleep 30
         SERVICE_URL=$(aws apprunner describe-service --service-arn ${{ env.SERVICE_ARN }} --region ${{ env.AWS_REGION }} --query 'Service.ServiceUrl' --output text)
         echo "Deployment complete! ✔️"
         echo "Your app: https://$SERVICE_URL"
