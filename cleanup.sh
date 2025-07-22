@@ -28,25 +28,35 @@ fi
 # Navigate to terraform directory
 cd terraform
 
-# Check if state exists
-if [ ! -f "terraform.tfstate" ]; then
-    echo -e "${YELLOW}ℹ  No Terraform state found${NC}"
-    exit 0
-fi
+# Initialize Terraform (for remote backend)
+echo -e "${YELLOW}Initializing Terraform...${NC}"
+terraform init -input=false -reconfigure
 
 # Get ECR URL before destruction
 ECR_URL=$(terraform output -raw ecr_repository_url 2>/dev/null || echo "")
 
+# Delete remote images from ECR (optional but avoids dangling images)
+if [ -n "$ECR_URL" ]; then
+    echo -e "${YELLOW}Deleting all ECR images from $ECR_URL ...${NC}"
+    IMAGES=$(aws ecr list-images --repository-name $PROJECT_NAME --query 'imageIds[*]' --output json)
+
+    if [ "$IMAGES" != "[]" ]; then
+        echo -e "${YELLOW}Found images, deleting...${NC}"
+        aws ecr batch-delete-image --repository-name $PROJECT_NAME --image-ids "$IMAGES" || true
+    else
+        echo -e "${GREEN}No images found in ECR repository${NC}"
+    fi
+fi
+
 # Destroy infrastructure
 echo -e "${YELLOW} Destroying infrastructure...${NC}"
-terraform init -quiet
 terraform destroy -auto-approve
 
 echo ""
 echo -e "${GREEN} Cleanup completed!${NC}"
 echo -e "${GREEN} No more AWS charges${NC}"
 echo ""
-echo -e "${BLUE} To remove Docker images:${NC}"
+echo -e "${BLUE} To remove Docker images locally:${NC}"
 echo "docker rmi ${PROJECT_NAME}:latest"
 if [ ! -z "$ECR_URL" ]; then
     echo "docker rmi ${ECR_URL}:latest"
